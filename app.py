@@ -35,7 +35,7 @@ def hello_world():
         
         for w in text_token:
             lexme = nlp.vocab[w.text]
-            if lexme.is_stop == False and w.text != "(" and w.text != ")" and w.text != ":" and w.text != "-"  :                                           
+            if lexme.is_stop == False and w.lemma_.isalpha() :                                           
                 word = w.lemma_.lower()                                  
                 word = lemmatizer(word, "NOUN")[0]
                 
