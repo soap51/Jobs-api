@@ -46,3 +46,7 @@ def getData(occupation):
                 else:                                   
                     count_dict[word] = 1                                         
     return jsonify(count_dict)
+
+
+if __name__ == "__main__":
+    app.run()
