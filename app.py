@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -45,4 +45,4 @@ def getData(occupation):
                     count_dict[word] += 1             
                 else:                                   
                     count_dict[word] = 1                                         
-    return count_dict
+    return jsonify(count_dict)
