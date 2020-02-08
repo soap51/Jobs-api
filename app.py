@@ -1,18 +1,168 @@
-from flask import Flask, jsonify
+# app.py
+from flask import Flask, request, jsonify
 from bs4 import BeautifulSoup
 import requests
 import re
 import spacy
+import pandas as pd
 from spacy.tokenizer import Tokenizer
 from spacy.lang.en import English
 from spacy.lang.en.stop_words import STOP_WORDS
-
-import time
+from flask_cors import CORS
+from spacy.tokens import Doc
 app = Flask(__name__)
+CORS(app)
 
-@app.route('/<string:occupation>')
+class CustomTokenizer(object):
+       def __init__(self, vocab):
+        self.vocab = vocab
+
+@app.route('/<string:occupation>' , methods=["GET"])
 def getData(occupation):
     nlp =  English()
+    words = [
+        " R ",
+        "R, ",
+        ", R",
+        "Hadoop",
+        "Big Data",
+        "Big data",
+        "big data",
+        "Data",
+        "data",
+        "Business",
+        "Machine Learning",
+        "machine learning",
+        "Deep Learning",
+        "deep learning",
+        "Neural Network",
+        "neural network",
+        "Neural Networks",
+        "neural networks",       
+        "Computer Vision",
+        "Data Mining", 
+        "data mining",
+        "Text Mining", 
+        "ERP",
+        "text mining", 
+        "Tableau", 
+        "tableau",     
+        "Data Scientist",
+        "Python",
+        "Javascript",
+        "PowerBI", 
+        "Power BI", 
+        "power bi", 
+        "SQL",
+        "Sql",
+        "sql",
+        "Data Studio", 
+        "Google Analytics", 
+        "Amazon Web Services", 
+        "AWS", 
+        "Amazon Web Service",
+        "MongoDB", 
+        "NoSQL",
+        "Nosql",
+        "nosql",
+        "NOSQL",  
+        "hive",
+        "Hive",
+        "HIVE",
+        "apache hive",
+        "Apache Hive",
+        "Apache Pig",
+        "Pig",
+        "PIG",
+        "Spark",
+        "Apache Spark",
+        "Apache spark",
+        "apache spark",
+        "HDFS",
+        "Hadoop Distributed File System",
+        "Hbase",
+        "Sqoop",
+        "ZooKeeper",
+        "Apache ZooKeeper",
+        "Apache Airflow",
+        "NOSQL",
+        "MapReduce",
+        "Solr",
+        "Lucene",
+        "C++",
+        "Artificial Intelligence",
+        "AI",
+        "Expert Systems",
+        "Scala",
+        "Java",
+        "Natural Language Processing",
+        "natural language processing",
+        "Pattern Recognition",
+        "pattern recognition",
+        "Recommendation Systems",
+        "recommendation systems",
+        "BigQuery",
+        "Cassandra",
+        "ElasticSearch",
+        "Kafka",
+        "Flask",
+        "Caffe",
+        "Torch",
+        "Scikit-Learn",
+        "Theano",
+        "MLlib",
+        "Classification",
+        "Regression",
+        "Clustering",
+        "Association Rules",
+        "Support Vector Machines",
+        "support vector machines",
+        "Storm",
+        "Azkaban",
+        "Luigi",
+        "Tensorflow",
+        "Keras",
+        "Pytorch",
+        "BigQuery",
+        "Dataproc",
+        "ML Engine",
+        "Google Cloud",
+        "SAS",
+        "Logistic Regression",
+        "KNN",
+        "k-Nearest Neighbor",
+        "MXNet",
+        "pandas",
+        "information retrieval",
+        "Information Retrieval",
+        "data visualization",
+        "nodejs",
+        "Nodejs",
+        "Node.js",
+        "node.js",
+        "python",
+        "Python",
+        "Redis",
+        "Golang",
+        "Java",
+        "C++",
+        "C#",
+        "J2EE",
+        "JSP",
+        "Servlet",
+        "JQuery",
+        "JSF",
+        "Hibernate",
+        "JDBC",
+        "Apache tomcat",
+        "Maven",
+        "Oracle database",
+        "Agile",
+        "SCRUM",
+        "REST API",
+        "Rest Api"
+    ]
+  
     source = requests.get("https://th.jobsdb.com/TH/TH/Search/FindJobs?KeyOpt=COMPLEX&JSRV=1&RLRSF=1&JobCat=1&SearchFields=Positions,Companies&Key="+occupation+"&JSSRC=HPSS").text
     soup = BeautifulSoup(source ,features="html.parser")  
     links = []
@@ -26,9 +176,11 @@ def getData(occupation):
         temp_soup = BeautifulSoup(temp_source ,features="html.parser")
         link_next_page = temp_soup.find("a",class_="pagebox-next" ) 
         poslink = temp_soup.find_all("a",class_="posLink" ) 
-        posLinks.extend(poslink)          
+        posLinks.extend(poslink)      
+    
     count_dict= {}
     word = ""
+    
     for a in posLinks:
         html_jobs = requests.get(a["href"]).text
         soup_jobs = BeautifulSoup(html_jobs ,features="html.parser")  
@@ -36,17 +188,26 @@ def getData(occupation):
         clean_re = re.compile(' {2, }|<.*?>|&([a-z0-9]+|#[0-9]{1,6}|#x[0-9a-f]{1,6});')  
         plain_text_jobs_detail = re.sub(clean_re, '',  str(div_jobs_detail))       
         plain_text_jobs_detail = " ".join(plain_text_jobs_detail.split())
-        text_token = nlp(plain_text_jobs_detail)        
+        text_token = Doc(nlp.vocab, words=words)    
         for w in text_token:
             lexme = nlp.vocab[w.text]
             if lexme.is_stop == False and w.lemma_.isalpha() :                                           
                 word = w.lemma_.lower()                                  
                 if (word in count_dict):                               
-                    count_dict[word] += 1             
+                    count_dict[word] += 1       
+        
                 else:                                   
-                    count_dict[word] = 1                                         
-    return jsonify(count_dict)
+                    count_dict[word] = 1 
+    
+    df = pd.DataFrame.from_dict(count_dict, columns=["count"], orient="index")
+    
+    return jsonify((df.sort_values(["count"], ascending=False).head(8).to_json() ))
 
+# A welcome message to test our server
+@app.route('/')
+def index():
+    return "<h1>Welcome to our server !!</h1>"
 
-if __name__ == "__main__":
-    app.run()
+if __name__ == '__main__':
+    # Threaded option to enable multiple instances for multiple user access support
+    app.run(threaded=True, port=5000)
